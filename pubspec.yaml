@@ -1,0 +1,48 @@
+# pubspec.yaml ── EJEMPLO COMPLETO
+name: del_palacio_app               # ← Nombre del paquete (minúsculas, _ o -)
+description: >
+  Aplicación Flutter interna de Del Palacio S.A. para KPIs, avisos,
+  asistencia y más.                       # Usa > para multilínea if needed
+publish_to: 'none'                        # Evita publicar en pub.dev
+version: 0.1.0+1                          # Major.Minor.Patch+Build
+
+environment:
+  sdk: '>=3.8.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # ── Core stack ──────────────────────────────────────────────────────────
+  flutter_riverpod: ^2.6.1
+  riverpod_annotation: ^2.3.0
+  dio_cache_interceptor: ^4.0.3     # ← cambia aquí
+  dio: ^5.4.3  
+  freezed_annotation: ^2.4.1
+  json_annotation: ^4.9.0
+  go_router: ^13.2.1
+  local_auth: ^2.2.0
+  # Otros paquetes que usas (ejemplos; si no los necesitas, bórralos)
+  shared_preferences: ^2.2.2
+  fl_chart: ^1.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  
+
+  very_good_analysis: 9.0.0
+  # Code-gen y tooling
+  build_runner: ^2.4.7
+  riverpod_generator: ^2.3.0
+  json_serializable: ^6.8.0
+  freezed: ^2.5.2
+
+  # Reglas de análisis (solo una a la vez)
+  
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/logo.png
