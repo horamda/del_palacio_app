@@ -1,84 +1,80 @@
-// lib/features/dashboard/ui/dashboard_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:fl_chart/fl_chart.dart';
+
 import 'package:del_palacio_app/core/widgets/app_scaffold.dart';
 import 'package:del_palacio_app/features/dashboard/logic/dashboard_providers.dart';
+import 'package:del_palacio_app/features/dashboard/widgets/empleado_header.dart';
 
 class DashboardScreen extends ConsumerWidget {
-  const DashboardScreen({super.key});
+  const DashboardScreen({
+    Key? key,
+    required this.dni,
+    this.sectorId = 1,
+  }) : super(key: key);
+
+  final String dni;
+  final int sectorId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Por ahora sector fijo = 1
-    const sectorId = 1;
-
-    final tarjetasAsync = ref.watch(tarjetasProvider(sectorId));
+    final empleadoAsync = ref.watch(empleadoProvider(dni));
 
     return AppScaffold(
       title: 'Dashboard',
-      body: tarjetasAsync.when(
+      body: empleadoAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
-        data: (tarjetas) {
-          if (tarjetas.isEmpty) {
-            return const Center(child: Text('Sin datos'));
+        error: (e, _) => Center(child: Text('Error cargando empleado:\n$e')),
+        data: (empleadoData) {
+          final datosRaw = empleadoData['chofer'];
+          final tarjetasRaw = empleadoData['tarjetas'];
+
+          if (datosRaw == null || datosRaw is! Map) {
+            return const Center(child: Text('No se encontraron datos del empleado.'));
           }
 
-          // Primer indicador para el gráfico
-          final primer = tarjetas.first;
-          // Construir el gráfico con datos vacíos por ahora
-          return ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              // Tarjetas
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (var t in tarjetas)
-                    Card(
-                      color: Color(int.parse(t['color'].substring(1), radix: 16) +
-                          0xFF000000),
-                      child: SizedBox(
-                        width: 150,
-                        height: 80,
-                        child: Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(t['indicador'],
-                                  style: const TextStyle(color: Colors.white)),
-                              Text('${t['valor']}',
-                                  style: const TextStyle(
-                                      color: Colors.white, fontSize: 20)),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              Text('Serie: ${primer['indicador']}',
-                  style: Theme.of(context).textTheme.titleMedium),
-              AspectRatio(
-                aspectRatio: 1.6,
-                child: LineChart(
-                  LineChartData(
-                    lineBarsData: [
-                      LineChartBarData(
-                        spots: const [], // se llenará luego
-                      ),
-                    ],
-                  ),
+          final datos = Map<String, dynamic>.from(datosRaw);
+          final tarjetas = (tarjetasRaw is List)
+              ? List<Map<String, dynamic>>.from(tarjetasRaw)
+              : <Map<String, dynamic>>[];
+
+          return RefreshIndicator(
+            onRefresh: () async {
+              ref.invalidate(empleadoProvider(dni));
+            },
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                PerfilEmpleadoHeader(
+                  nombre: datos['nombre']?.toString() ?? '',
+                  sector: datos['sector']?.toString() ?? '',
+                  dni: dni,
+                  imagenBase64: datos['foto']?.toString(),
+                  ultimaFecha: datos['fecha']?.toString() ?? '',
                 ),
-              ),
-            ],
+                const SizedBox(height: 16),
+                if (tarjetas.isEmpty)
+                  const Center(
+                    child: Text(
+                      'No hay KPIs disponibles.',
+                      style: TextStyle(fontSize: 16),
+                    ),
+                  )
+                else
+                  ...tarjetas.map((kpi) {
+                    final titulo = kpi['indicador']?.toString() ?? 'Sin título';
+                    final valor = kpi['valor']?.toString() ?? '';
+                    return Card(
+                      child: ListTile(
+                        title: Text(titulo),
+                        subtitle: Text(valor),
+                      ),
+                    );
+                  }),
+              ],
+            ),
           );
         },
       ),
     );
   }
 }
-

@@ -1,13 +1,8 @@
-// lib/features/auth/ui/login_screen.dart
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:local_auth/local_auth.dart';
-
-import 'package:del_palacio_app/features/auth/data/auth_repository.dart';
 import 'package:del_palacio_app/features/auth/logic/auth_providers.dart';
 
-/// Pantalla de login que permite autenticación por DNI
-/// y, si está disponible, huella digital.
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
@@ -18,46 +13,42 @@ class LoginScreen extends ConsumerStatefulWidget {
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _dniCtrl = TextEditingController();
-  final _auth = LocalAuthentication();
-
   bool _loading = false;
   String? _error;
 
   @override
-  void initState() {
-    super.initState();
-    _checkBiometrics();
+  void dispose() {
+    _dniCtrl.dispose();
+    super.dispose();
   }
 
-  /// Si el dispositivo soporta biometría, permite iniciar sesión con huella.
-  Future<void> _checkBiometrics() async {
-    final canCheck = await _auth.canCheckBiometrics;
-    final isAuth = canCheck &&
-        await _auth.authenticate(
-          localizedReason: 'Confirma tu identidad',
-          options: const AuthenticationOptions(biometricOnly: true),
-        );
+  String? _validateDni(String? value) {
+    final dni = value?.trim() ?? '';
 
-    if (!isAuth || !mounted) return;
-
-    // Si ya hay sesión guardada, navegar directo
-    final ok =
-        await ref.read(authControllerProvider.notifier).restoreSession();
-    if (ok && mounted) {
-      // ignore: use_build_context_synchronously
-      await Navigator.pushReplacementNamed(context, '/dashboard');
+    if (dni.isEmpty) return 'El DNI es requerido';
+    if (dni.length < 7 || dni.length > 8) {
+      return 'DNI debe tener entre 7 y 8 dígitos';
     }
+    if (int.tryParse(dni) == null) return 'DNI sólo puede contener números';
+
+    return null;
   }
 
-  Future<void> _onSubmit() async {
+  Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
     try {
       await ref
           .read(authControllerProvider.notifier)
           .login(_dniCtrl.text.trim());
-    } on AuthFailure catch (e) {
-      setState(() => _error = e.message);
+      if (!mounted) return;
+      Navigator.of(context).pushNamedAndRemoveUntil('/dashboard', (_) => false);
+    } catch (e) {
+      setState(() => _error = 'Error al iniciar sesión. Intente nuevamente.');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -65,48 +56,50 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final status = ref.watch(authControllerProvider);
-
-    if (status == AuthStatus.authenticated) {
-      WidgetsBinding.instance.addPostFrameCallback((_) async {
-        if (!mounted) return;
-        await Navigator.pushReplacementNamed(context, '/dashboard');
-      });
-    }
-
     return Scaffold(
+      appBar: AppBar(title: const Text('Login')),
       body: Padding(
         padding: const EdgeInsets.all(24),
-        child: Center(
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text('Iniciar sesión', style: TextStyle(fontSize: 24)),
-                TextFormField(
-                  controller: _dniCtrl,
-                  decoration: const InputDecoration(labelText: 'DNI'),
-                  keyboardType: TextInputType.number,
-                  validator: (v) =>
-                      (v == null || v.length < 6) ? 'DNI inválido' : null,
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextFormField(
+                controller: _dniCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'DNI',
+                  prefixIcon: Icon(Icons.badge),
                 ),
-                const SizedBox(height: 16),
-                if (_error != null)
-                  Text(_error!, style: const TextStyle(color: Colors.red)),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: _loading ? null : _onSubmit,
-                  child: _loading
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('Ingresar'),
+                keyboardType: TextInputType.number,
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp('[0-9]')),
+                  LengthLimitingTextInputFormatter(8),
+                ],
+                validator: _validateDni,
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  _error!,
+                  style: const TextStyle(color: Colors.red),
                 ),
               ],
-            ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _loading ? null : _login,
+                child: _loading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text('Ingresar'),
+              ),
+            ],
           ),
         ),
       ),

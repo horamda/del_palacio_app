@@ -1,36 +1,48 @@
 // lib/core/storage/local_storage.dart
-import 'package:shared_preferences/shared_preferences.dart';
 
-/// Maneja la sesión local (DNI + token) mediante `SharedPreferences`.
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:del_palacio_app/core/storage/session_data.dart';
+
 class LocalStorage {
-  LocalStorage._internal();                    // constructor privado
-
-  /// Instancia única para toda la app.
   static final LocalStorage instance = LocalStorage._internal();
+  final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
-  static const _keyDni   = 'dni';
-  static const _keyToken = 'token';
+  LocalStorage._internal();
 
-  /// Guarda DNI y token de sesión.
-  Future<void> saveSession(String dni, String token) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_keyDni, dni);
-    await prefs.setString(_keyToken, token);
+  static const _dniKey = 'dni';
+  static const _tokenKey = 'token';
+  static const _nombreKey = 'nombre';
+  static const _sectorKey = 'sector';
+  static const _sectorIdKey = 'sector_id';
+
+  Future<void> saveSession(String dni, String token,
+      {String nombre = '', String sector = '', int sectorId = 0}) async {
+    await _storage.write(key: _dniKey, value: dni);
+    await _storage.write(key: _tokenKey, value: token);
+    await _storage.write(key: _nombreKey, value: nombre);
+    await _storage.write(key: _sectorKey, value: sector);
+    await _storage.write(key: _sectorIdKey, value: sectorId.toString());
   }
 
-  /// Devuelve `(dni, token)` o `null` si no hay sesión almacenada.
-  Future<(String, String)?> readSession() async {
-    final prefs  = await SharedPreferences.getInstance();
-    final dni    = prefs.getString(_keyDni);
-    final token  = prefs.getString(_keyToken);
-    if (dni != null && token != null) return (dni, token);
-    return null;
+  Future<SessionData?> readSession() async {
+    final dni = await _storage.read(key: _dniKey);
+    final token = await _storage.read(key: _tokenKey);
+    final nombre = await _storage.read(key: _nombreKey);
+    final sector = await _storage.read(key: _sectorKey);
+    final sectorId = await _storage.read(key: _sectorIdKey);
+
+    if (dni == null || token == null) return null;
+
+    return SessionData(
+      dni: dni,
+      token: token,
+      nombre: nombre ?? '',
+      sector: sector ?? '',
+      sectorId: int.tryParse(sectorId ?? '') ?? 0,
+    );
   }
 
-  /// Borra la sesión almacenada.
   Future<void> clear() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_keyDni);
-    await prefs.remove(_keyToken);
+    await _storage.deleteAll();
   }
 }

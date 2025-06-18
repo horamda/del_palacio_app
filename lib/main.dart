@@ -12,19 +12,41 @@ class MyApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final status = ref.watch(authControllerProvider);
+    final authState = ref.watch(authControllerProvider);
+
+    Widget home;
+    if (authState == AuthStatus.unknown) {
+      home = const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    } else if (authState == AuthStatus.authenticated) {
+      final usuario = ref.read(authControllerProvider.notifier).usuarioActual;
+      home = usuario != null
+          ? DashboardScreen(dni: usuario.dni)
+          : const LoginScreen();
+    } else {
+      home = const LoginScreen();
+    }
 
     return MaterialApp(
       title: 'Empleados App',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        useMaterial3: true,
+        colorSchemeSeed: Colors.blue,
+      ),
       routes: {
-          '/login': (_) => const LoginScreen(),
-          '/dashboard': (_) => const DashboardScreen(),
+        '/api/login': (_) => const LoginScreen(),
+        '/dashboard': (_) => Consumer(
+          builder: (context, ref, _) {
+            final usuario = ref.read(authControllerProvider.notifier).usuarioActual;
+            return usuario != null
+                ? DashboardScreen(dni: usuario.dni)
+                : const LoginScreen();
+          },
+        ),
       },
-      home: switch (status) {
-        AuthStatus.unknown        => const Scaffold(body: Center(child: CircularProgressIndicator())),
-        AuthStatus.authenticated   => const DashboardScreen(),
-        AuthStatus.unauthenticated => const LoginScreen(),
-      },
+      home: home,
     );
   }
 }

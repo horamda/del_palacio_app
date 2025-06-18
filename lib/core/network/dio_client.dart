@@ -1,6 +1,6 @@
 // lib/core/network/dio_client.dart
-import 'package:dio/dio.dart';
 import 'package:del_palacio_app/core/config/app_config.dart';
+import 'package:dio/dio.dart';
 
 final dio = Dio(
   BaseOptions(

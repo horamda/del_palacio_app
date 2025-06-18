@@ -1,42 +1,32 @@
-// lib/features/dashboard/logic/dashboard_providers.dart
-import 'package:flutter/material.dart';                     // ← agrega
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:del_palacio_app/features/dashboard/data/dashboard_repository.dart';
+import 'package:del_palacio_app/core/storage/local_storage.dart';
 
-final dashboardRepoProvider =
-    Provider<DashboardRepository>((_) => DashboardRepository());
+final empleadoProvider = FutureProvider.family<Map<String, dynamic>, String>((ref, dni) async {
+  final dio = Dio();
 
-// Últimos 7 días como rango inicial
-final rangoProvider = StateProvider<DateTimeRange>((ref) {
-  final hoy = DateTime.now();
-  return DateTimeRange(
-    start: hoy.subtract(const Duration(days: 6)),
-    end: hoy,
+  final session = await LocalStorage.instance.readSession();
+  final token = session?.token;
+
+  if (token == null) {
+    throw Exception('Token no encontrado. Es necesario iniciar sesión.');
+  }
+
+  print('Consultando KPI con DNI real: $dni');
+
+  final response = await dio.get<Map<String, dynamic>>(
+    'https://appdelpalacio.onrender.com/api/kpis_por_dni/$dni',
+    options: Options(
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    ),
   );
-});
 
-/// Tarjetas KPI para un sector
-final tarjetasProvider = FutureProvider.family<
-    List<Map<String, dynamic>>, int>((ref, sectorId) async {
-  final rango = ref.watch(rangoProvider);
-  final repo  = ref.read(dashboardRepoProvider);
-  return repo.resumen(
-    sectorId: sectorId,                       // ← usa nombre
-    from: rango.start,
-    to  : rango.end,
-  );
-});
-
-/// Serie histórica para un indicador
-final serieProvider = FutureProvider.autoDispose.family<
-    Map<String, dynamic>,
-    ({int indicadorId, int sectorId})>((ref, params) async {
-  final rango = ref.watch(rangoProvider);
-  final repo  = ref.read(dashboardRepoProvider);
-  return repo.serie(
-    indicadorId: params.indicadorId,
-    sectorId   : params.sectorId,
-    from: rango.start,
-    to  : rango.end,
-  );
+  if (response.statusCode == 200) {
+    return response.data ?? {};
+  } else {
+    throw Exception('Error al cargar KPIs del empleado');
+  }
 });
