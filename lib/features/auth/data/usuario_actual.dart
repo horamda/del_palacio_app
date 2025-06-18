@@ -1,8 +1,6 @@
-
 // lib/features/auth/data/usuario_actual.dart
 
 class UsuarioActual {
-
   UsuarioActual({
     required this.dni,
     required this.nombre,

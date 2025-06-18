@@ -3,16 +3,22 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:del_palacio_app/features/auth/logic/auth_providers.dart';
 
 class AppScaffold extends ConsumerWidget {
-  const AppScaffold({required this.title, required this.body, super.key});
+  const AppScaffold({
+    super.key,
+    required this.title,
+    required this.body,
+    this.floatingActionButton, // ✅ Nuevo parámetro opcional
+  });
 
   final String title;
   final Widget body;
+  final Widget? floatingActionButton; // ✅ Se agrega como propiedad
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       appBar: AppBar(
-        title: FittedBox(child: Text(title)), // Evita overflow de texto largo
+        title: FittedBox(child: Text(title)),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
@@ -44,6 +50,7 @@ class AppScaffold extends ConsumerWidget {
         ],
       ),
       body: body,
+      floatingActionButton: floatingActionButton, // ✅ Aquí se usa
     );
   }
 }
