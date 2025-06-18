@@ -4,6 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:del_palacio_app/core/widgets/app_scaffold.dart';
 import 'package:del_palacio_app/features/dashboard/logic/dashboard_providers.dart';
 import 'package:del_palacio_app/features/dashboard/widgets/empleado_header.dart';
+//import 'package:del_palacio_app/features/dashboard/data/aviso.dart';
+import '../logic/avisos_provider.dart';
+
+
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({
@@ -59,7 +63,7 @@ class DashboardScreen extends ConsumerWidget {
                   _buildKPIsSection(tarjetas, theme),
                   
                   // Sección de avisos
-                  _buildAvisosSection(theme),
+                  _buildAvisosSection(theme, ref, dni),
                   
                   const SizedBox(height: 80), // Espacio para el FAB
                 ],
@@ -419,53 +423,66 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildAvisosSection(ThemeData theme) {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Avisos Recientes',
-            style: theme.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: theme.primaryColor,
-            ),
+Widget _buildAvisosSection(ThemeData theme, WidgetRef ref, String dni) {
+  final avisosAsync = ref.watch(avisosProvider(dni));
+
+  return Padding(
+    padding: const EdgeInsets.all(16),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Avisos Recientes',
+          style: theme.textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: theme.primaryColor,
           ),
-          const SizedBox(height: 16),
-          // Aquí podrías agregar un Consumer para avisos
-          Card(
-            elevation: 2,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: ListTile(
-              leading: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.info_outline,
-                  color: Colors.blue,
-                ),
-              ),
-              title: const Text('Bienvenido al dashboard'),
-              subtitle: const Text('Tu panel de control está listo para usar'),
-              trailing: Text(
-                'Hoy',
-                style: TextStyle(
-                  color: Colors.grey[600],
-                  fontSize: 12,
-                ),
-              ),
-            ),
+        ),
+        const SizedBox(height: 16),
+        avisosAsync.when(
+          loading: () => const CircularProgressIndicator(),
+          error: (error, _) => Text(
+            'Error al cargar avisos:\n${error.toString()}',
+            style: TextStyle(color: theme.colorScheme.error),
           ),
-        ],
-      ),
-    );
-  }
+          data: (avisos) {
+            if (avisos.isEmpty) {
+              return const Text('No hay avisos recientes');
+            }
+            return Column(
+              children: avisos.map((aviso) {
+                return Card(
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: ListTile(
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.info_outline,
+                        color: Colors.blue,
+                      ),
+                    ),
+                    title: Text(aviso.mensaje),
+                    subtitle: Text(aviso.fecha),
+                  ),
+                );
+              }).toList(),
+            );
+          },
+        ),
+      ],
+    ),
+  );
+}
+
+
+
 
   Widget _buildFloatingActionButton(BuildContext context) {
     return FloatingActionButton.extended(
